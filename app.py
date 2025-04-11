@@ -13,11 +13,12 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+# Add local yolov5 path
+YOLOV5_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yolov5')
+sys.path.append(YOLOV5_PATH)
+
 # Use CPU only (for Render)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
-# Add local yolov5 path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'yolov5'))
 
 # YOLOv5 imports
 from models.experimental import attempt_load
@@ -73,15 +74,19 @@ def detect_image(image_path, save_path):
         if len(det):
             det[:, :4] = scale_coords(img_tensor.shape[2:], det[:, :4], img.size).round()
 
-    model.names = model.names if hasattr(model, 'names') else model.module.names
-    img_with_boxes = img.copy()
-    draw = ImageDraw.Draw(img_with_boxes)
+            model.names = model.names if hasattr(model, 'names') else model.module.names
+            img_with_boxes = img.copy()
+            draw = ImageDraw.Draw(img_with_boxes)
 
-    for *xyxy, conf, cls in det:
-        draw.rectangle(xyxy, outline="red", width=2)
-        draw.text((xyxy[0], xyxy[1]), f"{model.names[int(cls)]} {conf:.2f}", fill="red")
+            for *xyxy, conf, cls in det:
+                draw.rectangle(xyxy, outline="red", width=2)
+                draw.text((xyxy[0], xyxy[1]), f"{model.names[int(cls)]} {conf:.2f}", fill="red")
 
-    img_with_boxes.save(save_path)
+            img_with_boxes.save(save_path)
+        else:
+            # Save original image if no detections
+            img.save(save_path)
+
 
 @app.route("/")
 def index():
