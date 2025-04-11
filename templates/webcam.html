@@ -26,10 +26,8 @@
       context = canvas.getContext("2d");
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Convert to data URL
       const dataURL = canvas.toDataURL("image/jpeg");
-      
-      // Send to backend
+
       fetch("/upload_webcam", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,7 +35,7 @@
       })
       .then((res) => res.text())
       .then((response) => {
-        window.location.href = response; // Redirect to result page
+        window.location.href = response;
       })
       .catch((error) => {
         console.error("Upload failed:", error);
@@ -53,6 +51,7 @@
       flex-direction: column;
       align-items: center;
       padding: 20px;
+      background-color: #f3f4f6;
     }
     video, canvas {
       border-radius: 12px;
@@ -66,17 +65,18 @@
       font-size: 16px;
       border: none;
       border-radius: 8px;
-      background: #007bff;
+      background: #3b82f6;
       color: white;
       cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     button:hover {
-      background: #0056b3;
+      background: #2563eb;
     }
   </style>
 </head>
 <body>
-  <h2>Capture Image from Webcam</h2>
+  <h2 class="text-2xl font-bold text-blue-600 mb-4">Capture Image from Webcam</h2>
   <video id="webcam" autoplay></video>
   <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
   <button onclick="captureImage()">Capture Image</button>
