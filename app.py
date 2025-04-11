@@ -11,9 +11,11 @@ from PIL import Image
 from pathlib import Path
 
 # ✅ Add yolov5 to sys.path
-YOLOV5_PATH = Path(__file__).resolve().parent / 'yolov5'
-if str(YOLOV5_PATH) not in sys.path:
-    sys.path.append(str(YOLOV5_PATH))
+YOLOV5_PATH = Path(__file__).parent / "yolov5"
+if YOLOV5_PATH.exists():
+    sys.path.insert(0, str(YOLOV5_PATH))
+else:
+    raise RuntimeError(f"❌ yolov5 folder not found at {YOLOV5_PATH}")
 
 # ✅ YOLOv5 imports
 from models.common import DetectMultiBackend
