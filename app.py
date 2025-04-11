@@ -9,9 +9,14 @@ from flask import Flask, render_template, request, redirect, url_for
 from PIL import Image
 from datetime import datetime
 import torch
+from PIL import ImageDraw
+
 
 # Use CPU only (for Render)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'yolov5'))
 
 # Add local yolov5 repo to path
 sys.path.append("yolov5")
