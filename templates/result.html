@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detection Result</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
+
+  <div class="bg-white shadow-lg rounded-xl p-6 max-w-xl w-full text-center">
+    <h1 class="text-3xl font-bold text-green-600 mb-4">Defect Detection Result</h1>
+    <p class="text-gray-700 mb-4">Below is the output image with detected defects (if any).</p>
+
+    <div class="mb-4">
+      <img src="{{ url_for('static', filename='results/' + result_image) }}" 
+           alt="Detection Result" 
+           class="w-full rounded-lg border border-gray-300"/>
+    </div>
+
+    <div class="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+      <a href="/" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-5 py-2 rounded shadow">
+        Back to Gallery
+      </a>
+      <a href="/webcam" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold px-5 py-2 rounded shadow">
+        Try Webcam
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>
+

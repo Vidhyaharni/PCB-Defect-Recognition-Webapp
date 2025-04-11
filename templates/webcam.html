@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Webcam Upload</title>
+  <script defer>
+    let video, canvas, context;
+
+    function startWebcam() {
+      video = document.getElementById("webcam");
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          video.srcObject = stream;
+          video.play();
+        })
+        .catch((err) => {
+          alert("Camera access denied or unavailable.");
+          console.error("Webcam error:", err);
+        });
+    }
+
+    function captureImage() {
+      canvas = document.getElementById("canvas");
+      context = canvas.getContext("2d");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert to data URL
+      const dataURL = canvas.toDataURL("image/jpeg");
+      
+      // Send to backend
+      fetch("/upload_webcam", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: dataURL }),
+      })
+      .then((res) => res.text())
+      .then((response) => {
+        window.location.href = response; // Redirect to result page
+      })
+      .catch((error) => {
+        console.error("Upload failed:", error);
+      });
+    }
+
+    window.onload = startWebcam;
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    video, canvas {
+      border-radius: 12px;
+      box-shadow: 0 0 10px #0003;
+      margin-bottom: 20px;
+      width: 320px;
+      height: 240px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h2>Capture Image from Webcam</h2>
+  <video id="webcam" autoplay></video>
+  <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+  <button onclick="captureImage()">Capture Image</button>
+</body>
+</html>

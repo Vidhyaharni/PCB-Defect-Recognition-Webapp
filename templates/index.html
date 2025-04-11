@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PCB Defect Detection</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+  <header class="text-center mb-8">
+    <h1 class="text-4xl font-bold text-blue-600 mb-2">PCB Defect Detection</h1>
+    <p class="text-gray-600 text-lg">Click on an image to detect defects or use live webcam upload</p>
+  </header>
+
+  <div class="mb-6">
+    <a href="/webcam" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded shadow">
+      Upload via Webcam
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-6xl w-full">
+    {% for image in images %}
+      <form action="/detect" method="POST" class="bg-white rounded-lg shadow-md overflow-hidden">
+        <button type="submit" class="block w-full hover:opacity-80">
+          <img src="{{ url_for('static', filename='test_images/' ~ image) }}" alt="{{ image }}" class="w-full h-48 object-cover" />
+          <input type="hidden" name="image" value="{{ image }}">
+          <div class="p-2 bg-blue-100 text-center text-sm font-medium text-blue-600">Detect</div>
+        </button>
+      </form>
+    {% endfor %}
+  </div>
+
+</body>
+</html>
