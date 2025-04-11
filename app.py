@@ -4,13 +4,21 @@ import base64
 import uuid
 import requests
 import time
+import sys
 from flask import Flask, render_template, request, redirect, url_for
 from PIL import Image
 from datetime import datetime
 import torch
 
-# Set to use CPU only (for Render)
+# Use CPU only (for Render)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+# Add local yolov5 repo to path
+sys.path.append("yolov5")
+from models.experimental import attempt_load
+from utils.general import non_max_suppression, scale_coords
+from utils.torch_utils import select_device
+from utils.datasets import letterbox
 
 # Folder setup
 TEST_IMAGES_FOLDER = 'static/test_images'
@@ -21,7 +29,7 @@ os.makedirs(TEST_IMAGES_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Download YOLOv5 model from Google Drive if not present
+# Download YOLOv5 model if not present
 MODEL_PATH = "pcb_defect_model.pt"
 GDRIVE_FILE_ID = "1-0Gwiux0iVPBQ34Ku9j2WmOtoz_TICdk"
 MODEL_URL = f"https://drive.google.com/uc?export=download&id={GDRIVE_FILE_ID}"
@@ -37,15 +45,38 @@ if not os.path.exists(MODEL_PATH):
     else:
         raise RuntimeError("Failed to download model.")
 
-# Load YOLOv5 model
-try:
-    model = torch.hub.load("ultralytics/yolov5", "custom", path=MODEL_PATH, force_reload=False)
-    print("YOLOv5 model loaded successfully.")
-except Exception as e:
-    raise RuntimeError(f"Error loading YOLOv5 model: {e}")
+# Load model locally
+device = select_device('cpu')
+model = attempt_load(MODEL_PATH, map_location=device)
+print("YOLOv5 model loaded successfully.")
 
-# Initialize Flask app
+# Flask app
 app = Flask(__name__)
+
+def detect_image(image_path, save_path):
+    img = Image.open(image_path).convert("RGB")
+    img_resized = letterbox(img, new_shape=640)[0]
+    img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).float() / 255.0
+    if img_tensor.ndimension() == 3:
+        img_tensor = img_tensor.unsqueeze(0)
+
+    pred = model(img_tensor.to(device), augment=False)[0]
+    pred = non_max_suppression(pred, 0.25, 0.45, classes=None, agnostic=False)
+    
+    for det in pred:
+        if len(det):
+            det[:, :4] = scale_coords(img_tensor.shape[2:], det[:, :4], img.size).round()
+
+    # Render results on image
+    model.names = model.names if hasattr(model, 'names') else model.module.names
+    img_with_boxes = img.copy()
+    draw = ImageDraw.Draw(img_with_boxes)
+
+    for *xyxy, conf, cls in det:
+        draw.rectangle(xyxy, outline="red", width=2)
+        draw.text((xyxy[0], xyxy[1]), f"{model.names[int(cls)]} {conf:.2f}", fill="red")
+
+    img_with_boxes.save(save_path)
 
 @app.route("/")
 def index():
@@ -56,12 +87,9 @@ def index():
 def detect():
     image_name = request.form["image"]
     image_path = os.path.join(TEST_IMAGES_FOLDER, image_name)
-
-    results = model(image_path)
-    results.render()
-
     result_path = os.path.join(RESULTS_FOLDER, image_name)
-    Image.fromarray(results.ims[0]).save(result_path)
+
+    detect_image(image_path, result_path)
 
     return redirect(url_for("result", filename=image_name))
 
@@ -74,7 +102,7 @@ def upload_webcam():
     data = request.get_json()
     image_data = data["imageData"].split(",")[1]
     image_bytes = base64.b64decode(image_data)
-    image = Image.open(io.BytesIO(image_bytes))
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     filename = f"webcam_{timestamp}.jpg"
@@ -82,10 +110,7 @@ def upload_webcam():
     result_path = os.path.join(RESULTS_FOLDER, filename)
 
     image.save(input_path)
-
-    results = model(input_path)
-    results.render()
-    Image.fromarray(results.ims[0]).save(result_path)
+    detect_image(input_path, result_path)
 
     return url_for("result", filename=filename)
 
@@ -99,5 +124,5 @@ def result(filename):
     """
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # This must match your render.yaml PORT env var
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
