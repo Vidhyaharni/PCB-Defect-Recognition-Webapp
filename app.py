@@ -10,20 +10,26 @@ from flask import Flask, render_template, request
 from PIL import Image
 from pathlib import Path
 
-# Add YOLOv5 path
-sys.path.append(str(Path(__file__).resolve().parent / "yolov5"))
+# ✅ Add yolov5 to sys.path
+YOLOV5_PATH = Path(__file__).resolve().parent / 'yolov5'
+if str(YOLOV5_PATH) not in sys.path:
+    sys.path.append(str(YOLOV5_PATH))
+
+# ✅ YOLOv5 imports
 from models.common import DetectMultiBackend
 from utils.general import non_max_suppression, scale_boxes
 from utils.torch_utils import select_device
 
+# ✅ Flask app setup
 app = Flask(__name__)
 
-# Paths
+# ✅ Paths
 ROOT_DIR = os.getcwd()
 MODEL_PATH = os.path.join(ROOT_DIR, 'pcb_defect_model.pt')
 TEST_IMAGES_FOLDER = os.path.join('static', 'test_images')
 RESULTS_FOLDER = os.path.join('static', 'results')
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
+os.makedirs(TEST_IMAGES_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -45,11 +51,11 @@ device = select_device("cpu")
 model = DetectMultiBackend(MODEL_PATH, device=device)
 model.eval()
 
-# 🧠 Detection Function
+# ✅ Detection Function
 def detect_image_yolov5(image_path):
-    img0 = cv2.imread(image_path)  # BGR
+    img0 = cv2.imread(image_path)
     img = cv2.resize(img0, (640, 640))
-    img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB
+    img = img[:, :, ::-1].transpose(2, 0, 1)
     img = np.ascontiguousarray(img)
 
     im = torch.from_numpy(img).to(device)
@@ -65,13 +71,15 @@ def detect_image_yolov5(image_path):
             det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], img0.shape).round()
             for *xyxy, conf, cls in det:
                 label = f'{model.names[int(cls)]} {conf:.2f}'
-                cv2.rectangle(img0, (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3])), (0, 255, 0), 2)
+                cv2.rectangle(img0, (int(xyxy[0]), int(xyxy[1])),
+                              (int(xyxy[2]), int(xyxy[3])), (0, 255, 0), 2)
                 cv2.putText(img0, label, (int(xyxy[0]), int(xyxy[1]) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     img_rgb = cv2.cvtColor(img0, cv2.COLOR_BGR2RGB)
     return Image.fromarray(img_rgb)
 
+# ✅ Routes
 @app.route('/')
 def index():
     images = os.listdir(TEST_IMAGES_FOLDER)
@@ -115,6 +123,7 @@ def upload_webcam():
 def result_from_webcam(result_image):
     return render_template('result.html', result_image=result_image)
 
+# ✅ Start app (Render needs this format)
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
