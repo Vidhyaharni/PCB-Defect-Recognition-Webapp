@@ -6,20 +6,20 @@ import requests
 import time
 import sys
 from flask import Flask, render_template, request, redirect, url_for
-from PIL import Image
+from PIL import Image, ImageDraw
 from datetime import datetime
 import torch
-from PIL import ImageDraw
-
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
 
 # Use CPU only (for Render)
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
-import sys
-import os
+
+# Add local yolov5 path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'yolov5'))
 
-# Add local yolov5 repo to path
-sys.path.append("yolov5")
+# YOLOv5 imports
 from models.experimental import attempt_load
 from utils.general import non_max_suppression, scale_coords
 from utils.torch_utils import select_device
@@ -34,11 +34,12 @@ os.makedirs(TEST_IMAGES_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Download YOLOv5 model if not present
+# Model settings
 MODEL_PATH = "pcb_defect_model.pt"
 GDRIVE_FILE_ID = "1-0Gwiux0iVPBQ34Ku9j2WmOtoz_TICdk"
 MODEL_URL = f"https://drive.google.com/uc?export=download&id={GDRIVE_FILE_ID}"
 
+# Download model if missing
 if not os.path.exists(MODEL_PATH):
     print("Downloading YOLOv5 model from Google Drive...")
     response = requests.get(MODEL_URL)
@@ -50,7 +51,7 @@ if not os.path.exists(MODEL_PATH):
     else:
         raise RuntimeError("Failed to download model.")
 
-# Load model locally
+# Load model
 device = select_device('cpu')
 model = attempt_load(MODEL_PATH, map_location=device)
 print("YOLOv5 model loaded successfully.")
@@ -60,19 +61,18 @@ app = Flask(__name__)
 
 def detect_image(image_path, save_path):
     img = Image.open(image_path).convert("RGB")
-    img_resized = letterbox(img, new_shape=640)[0]
+    img_resized = letterbox(np.array(img), new_shape=640)[0]
     img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).float() / 255.0
     if img_tensor.ndimension() == 3:
         img_tensor = img_tensor.unsqueeze(0)
 
     pred = model(img_tensor.to(device), augment=False)[0]
     pred = non_max_suppression(pred, 0.25, 0.45, classes=None, agnostic=False)
-    
+
     for det in pred:
         if len(det):
             det[:, :4] = scale_coords(img_tensor.shape[2:], det[:, :4], img.size).round()
 
-    # Render results on image
     model.names = model.names if hasattr(model, 'names') else model.module.names
     img_with_boxes = img.copy()
     draw = ImageDraw.Draw(img_with_boxes)
@@ -95,7 +95,6 @@ def detect():
     result_path = os.path.join(RESULTS_FOLDER, image_name)
 
     detect_image(image_path, result_path)
-
     return redirect(url_for("result", filename=image_name))
 
 @app.route("/webcam")
