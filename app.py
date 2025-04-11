@@ -1,23 +1,21 @@
-import pathlib
 import os
+import sys
 import uuid
 import base64
+import pathlib
+import requests
 import cv2
 import numpy as np
 import torch
 from flask import Flask, render_template, request
 from PIL import Image
-import sys
 from pathlib import Path
 
-# Patch to fix PosixPath issue on Windows
+# Patch PosixPath issue for Windows
 if pathlib.PosixPath != pathlib.WindowsPath:
-    class WindowsPath(pathlib.PosixPath):
-        def __new__(cls, *args, **kwargs):
-            return pathlib.WindowsPath(*args, **kwargs)
-    pathlib.PosixPath = WindowsPath
+    pathlib.PosixPath = pathlib.WindowsPath
 
-# Add yolov5 to path
+# Add YOLOv5 path
 sys.path.append(str(Path(__file__).resolve().parent / "yolov5"))
 from models.common import DetectMultiBackend
 from utils.general import non_max_suppression, scale_boxes
@@ -25,30 +23,47 @@ from utils.torch_utils import select_device
 
 app = Flask(__name__)
 
-# Folders
-TEST_IMAGES_FOLDER = 'static/test_images'
-RESULTS_FOLDER = 'static/results'
-UPLOAD_FOLDER = 'static/uploads'
+# Paths
+ROOT_DIR = os.getcwd()
+MODEL_PATH = os.path.join(ROOT_DIR, 'pcb_defect_model.pt')
+TEST_IMAGES_FOLDER = os.path.join('static', 'test_images')
+RESULTS_FOLDER = os.path.join('static', 'results')
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Load model
-device = select_device('cpu')
-model = DetectMultiBackend('pcb_defect_model.pt', device=device)
+# ✅ Download model from Google Drive if missing
+GDRIVE_FILE_ID = "1-0Gwiux0iVPBQ34Ku9j2WmOtoz_TICdk"
+GDRIVE_URL = f"https://drive.google.com/uc?export=download&id={GDRIVE_FILE_ID}"
+if not os.path.exists(MODEL_PATH):
+    print("🔄 Downloading model from Google Drive...")
+    r = requests.get(GDRIVE_URL)
+    if r.status_code == 200:
+        with open(MODEL_PATH, "wb") as f:
+            f.write(r.content)
+        print("✅ Model downloaded.")
+    else:
+        raise RuntimeError("❌ Failed to download model.")
+
+# ✅ Load YOLOv5 model
+device = select_device("cpu")
+model = DetectMultiBackend(MODEL_PATH, device=device)
 model.eval()
 
-def detect_image(image_path):
+# 🧠 Detection Function
+def detect_image_yolov5(image_path):
     img0 = cv2.imread(image_path)  # BGR
     img = cv2.resize(img0, (640, 640))
-    img = img[:, :, ::-1].transpose(2, 0, 1)  # to 3x640x640 RGB
+    img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB
     img = np.ascontiguousarray(img)
 
-    im = torch.from_numpy(img).to(device).float() / 255.0
+    im = torch.from_numpy(img).to(device)
+    im = im.float() / 255.0
     if im.ndimension() == 3:
         im = im.unsqueeze(0)
 
     pred = model(im, augment=False, visualize=False)
-    pred = non_max_suppression(pred, 0.25, 0.45, None, False)
+    pred = non_max_suppression(pred, 0.25, 0.45)
 
     for det in pred:
         if len(det):
@@ -71,11 +86,11 @@ def index():
 def detect():
     image_name = request.form['image']
     image_path = os.path.join(TEST_IMAGES_FOLDER, image_name)
-    result_image = detect_image(image_path)
+    result_img = detect_image_yolov5(image_path)
 
     result_filename = f"{uuid.uuid4().hex}.jpg"
     result_path = os.path.join(RESULTS_FOLDER, result_filename)
-    result_image.save(result_path)
+    result_img.save(result_path)
 
     return render_template('result.html', result_image=result_filename)
 
@@ -87,17 +102,17 @@ def webcam():
 def upload_webcam():
     data = request.get_json()
     image_data = data['imageData'].split(',')[1]
-    binary_data = base64.b64decode(image_data)
+    image_bytes = base64.b64decode(image_data)
 
     filename = f"{uuid.uuid4().hex}.jpg"
     filepath = os.path.join(UPLOAD_FOLDER, filename)
-    with open(filepath, 'wb') as f:
-        f.write(binary_data)
+    with open(filepath, "wb") as f:
+        f.write(image_bytes)
 
-    result = detect_image(filepath)
+    result_img = detect_image_yolov5(filepath)
     result_filename = f"{uuid.uuid4().hex}.jpg"
     result_path = os.path.join(RESULTS_FOLDER, result_filename)
-    result.save(result_path)
+    result_img.save(result_path)
 
     return f"/result_from_webcam/{result_filename}"
 
@@ -106,5 +121,5 @@ def result_from_webcam(result_image):
     return render_template('result.html', result_image=result_image)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

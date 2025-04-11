@@ -1,6 +1,6 @@
-Flask
+flask
 torch
 opencv-python
 Pillow
 numpy
-gunicorn
+requests
