@@ -1,129 +1,103 @@
-from flask import Flask, render_template, request, jsonify
 import os
-<<<<<<< HEAD
-import uuid
-import pathlib
+import io
 import base64
-from io import BytesIO
+import uuid
+import requests
+import time
+from flask import Flask, render_template, request, redirect, url_for
+from PIL import Image
+from datetime import datetime
+import torch
 
-# Fix PosixPath issue on Windows
-class WindowsPath(pathlib.PosixPath):
-    def __new__(cls, *args, **kwargs):
-        return pathlib.WindowsPath(*args, **kwargs)
+# Set to use CPU only (for Render)
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-pathlib.PosixPath = WindowsPath
-
-try:
-    import torch
-    from PIL import Image
-except ModuleNotFoundError as e:
-    raise RuntimeError("Required modules not found. Please ensure 'torch' and 'Pillow' are installed.") from e
-
-app = Flask(__name__)
-
-# Load YOLOv5 model
-try:
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path='C:/vidhya/Documents/pcb-defect-app/pcb_defect_model.pt', force_reload=True)
-except Exception as e:
-    raise RuntimeError("Error loading YOLOv5 model. Ensure model.pt is in the correct path and torch is properly installed.") from e
-
-# Folders
+# Folder setup
 TEST_IMAGES_FOLDER = 'static/test_images'
 RESULTS_FOLDER = 'static/results'
 UPLOAD_FOLDER = 'static/uploads'
+
+os.makedirs(TEST_IMAGES_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.route('/')
+# Download YOLOv5 model from Google Drive if not present
+MODEL_PATH = "pcb_defect_model.pt"
+GDRIVE_FILE_ID = "1-0Gwiux0iVPBQ34Ku9j2WmOtoz_TICdk"
+MODEL_URL = f"https://drive.google.com/uc?export=download&id={GDRIVE_FILE_ID}"
+
+if not os.path.exists(MODEL_PATH):
+    print("Downloading YOLOv5 model from Google Drive...")
+    response = requests.get(MODEL_URL)
+    if response.status_code == 200:
+        with open(MODEL_PATH, "wb") as f:
+            f.write(response.content)
+        print("Model downloaded.")
+        time.sleep(2)
+    else:
+        raise RuntimeError("Failed to download model.")
+
+# Load YOLOv5 model
+try:
+    model = torch.hub.load("ultralytics/yolov5", "custom", path=MODEL_PATH, force_reload=False)
+    print("YOLOv5 model loaded successfully.")
+except Exception as e:
+    raise RuntimeError(f"Error loading YOLOv5 model: {e}")
+
+# Initialize Flask app
+app = Flask(__name__)
+
+@app.route("/")
 def index():
     images = os.listdir(TEST_IMAGES_FOLDER)
-    return render_template('index.html', images=images)
+    return render_template("index.html", images=images)
 
-@app.route('/detect', methods=['POST'])
+@app.route("/detect", methods=["POST"])
 def detect():
-    image_name = request.form['image']
+    image_name = request.form["image"]
     image_path = os.path.join(TEST_IMAGES_FOLDER, image_name)
 
     results = model(image_path)
-    result_img = results.render()[0]
-    result_pil = Image.fromarray(result_img)
+    results.render()
 
-    result_filename = f"{uuid.uuid4().hex}.jpg"
-    result_path = os.path.join(RESULTS_FOLDER, result_filename)
-    result_pil.save(result_path)
+    result_path = os.path.join(RESULTS_FOLDER, image_name)
+    Image.fromarray(results.ims[0]).save(result_path)
 
-    return render_template('result.html', result_image=result_filename)
-=======
-import io
-import gdown
-from PIL import Image
-import torch
-import numpy as np
-from flask import Flask, render_template, request, jsonify
-from werkzeug.utils import secure_filename
+    return redirect(url_for("result", filename=image_name))
 
-app = Flask(__name__)
-
-# Ensure YOLOv5 model is downloaded from Google Drive
-def download_model():
-    file_id = "1-0Gwiux0iVPBQ34Ku9j2WmOtoz_TICdk"
-    url = f"https://drive.google.com/uc?id={file_id}"
-    output = "pcb_defect_model.pt"
-    if not os.path.exists(output):
-        print("Downloading model from Google Drive...")
-        gdown.download(url, output, quiet=False)
-
-download_model()
-
-# Load the model (CPU only for Render)
-model = torch.hub.load('ultralytics/yolov5', 'custom', path='pcb_defect_model.pt', force_reload=True)
-model.to('cpu')
-
-# Home page with test images
-@app.route('/')
-def index():
-    test_images = os.listdir('static/test_images')
-    return render_template('index.html', test_images=test_images)
->>>>>>> 5d53de6 (Update app.py and requirements.txt for Render deployment)
-
-# Webcam upload page
-@app.route('/webcam')
+@app.route("/webcam")
 def webcam():
-    return render_template('webcam.html')
+    return render_template("webcam.html")
 
-# Prediction route
-@app.route('/predict', methods=['POST'])
-def predict():
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image provided'}), 400
+@app.route("/upload_webcam", methods=["POST"])
+def upload_webcam():
+    data = request.get_json()
+    image_data = data["imageData"].split(",")[1]
+    image_bytes = base64.b64decode(image_data)
+    image = Image.open(io.BytesIO(image_bytes))
 
-<<<<<<< HEAD
-    image_data = data['imageData']
-    header, encoded = image_data.split(",", 1)
-    binary_data = base64.b64decode(encoded)
-=======
-    file = request.files['image']
-    filename = secure_filename(file.filename)
-    img_bytes = file.read()
->>>>>>> 5d53de6 (Update app.py and requirements.txt for Render deployment)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    filename = f"webcam_{timestamp}.jpg"
+    input_path = os.path.join(TEST_IMAGES_FOLDER, filename)
+    result_path = os.path.join(RESULTS_FOLDER, filename)
 
-    # Convert image bytes to PIL image
-    image = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+    image.save(input_path)
 
-<<<<<<< HEAD
-    results = model(filepath)
-    result_img = results.render()[0]
-    result_pil = Image.fromarray(result_img)
-=======
-    # Run YOLOv5 model
-    results = model(image)
->>>>>>> 5d53de6 (Update app.py and requirements.txt for Render deployment)
+    results = model(input_path)
+    results.render()
+    Image.fromarray(results.ims[0]).save(result_path)
 
-    # Save image with detections
-    output_path = os.path.join('static', 'results', filename)
-    results.save(save_dir='static/results')  # Saves into static/results directory
+    return url_for("result", filename=filename)
 
-    return jsonify({'result_path': f'/static/results/{filename}'})
+@app.route("/result/<filename>")
+def result(filename):
+    result_url = url_for("static", filename=f"results/{filename}")
+    return f"""
+    <h2>Detection Result</h2>
+    <img src="{result_url}" style="max-width:100%;"/>
+    <br><a href="/">Back to Home</a>
+    """
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
