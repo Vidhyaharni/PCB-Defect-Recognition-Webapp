@@ -2,7 +2,6 @@ import os
 import sys
 import uuid
 import base64
-import pathlib
 import requests
 import cv2
 import numpy as np
@@ -10,10 +9,6 @@ import torch
 from flask import Flask, render_template, request
 from PIL import Image
 from pathlib import Path
-
-# Patch PosixPath issue for Windows
-if pathlib.PosixPath != pathlib.WindowsPath:
-    pathlib.PosixPath = pathlib.WindowsPath
 
 # Add YOLOv5 path
 sys.path.append(str(Path(__file__).resolve().parent / "yolov5"))
