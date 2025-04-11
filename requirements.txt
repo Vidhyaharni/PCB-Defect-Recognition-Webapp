@@ -114,7 +114,6 @@ torch==2.1.2+cpu
 torchvision==0.16.2+cpu
 torchaudio==2.1.2+cpu
 -f https://download.pytorch.org/whl/torch_stable.html
-ultralytics==8.1.37
 tornado==6.4.2
 tqdm==4.67.1
 traitlets==5.14.3
