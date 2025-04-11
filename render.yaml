@@ -2,10 +2,10 @@ services:
   - type: web
     name: pcb-defect-detector
     env: python
-    region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
       - key: PORT
-        value: 5000
+        value: 10000
     plan: free
+    autoDeploy: true
