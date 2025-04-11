@@ -1,5 +1,6 @@
-flask
-torch==2.1.0
+Flask
+torch
 opencv-python
 Pillow
 numpy
+gunicorn
