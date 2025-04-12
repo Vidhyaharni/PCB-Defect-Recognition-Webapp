@@ -2,6 +2,9 @@ flask
 torch
 opencv-python
 Pillow
-numpy
+numpy==1.24.4
 requests
 pandas
+seaborn
+scipy
+matplotlib
