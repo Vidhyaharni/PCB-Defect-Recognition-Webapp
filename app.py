@@ -126,6 +126,7 @@ def result_from_webcam(result_image):
     return render_template('result.html', result_image=result_image)
 
 # ✅ Start app (Render needs this format)
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
