@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: pcb-defect-app
+    name: defectoscope
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python app.py
