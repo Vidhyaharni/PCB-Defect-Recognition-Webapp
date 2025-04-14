@@ -136,6 +136,6 @@ def result_from_webcam(result_image):
     return render_template('result.html', result_image=result_image)
 
 # Render compatible run block
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))  # Default to 8080
+    app.run(host='0.0.0.0', port=port)
