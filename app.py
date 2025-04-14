@@ -9,6 +9,7 @@ from io import BytesIO
 from PIL import Image
 import numpy as np
 import torch
+from PIL import ImageDraw
 from flask import Flask, render_template, request
 
 # Setup logs
