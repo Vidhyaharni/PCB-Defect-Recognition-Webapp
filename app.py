@@ -52,7 +52,7 @@ print("✅ Model loaded.")
 # 🔍 Detection function
 def detect_image(image_path):
     img0 = cv2.imread(str(image_path))  # Original
-    img = cv2.resize(img0, (640, 640))
+    img = cv2.resize(img0, (416, 416))
     img = img[:, :, ::-1].transpose(2, 0, 1)
     img = np.ascontiguousarray(img)
 
