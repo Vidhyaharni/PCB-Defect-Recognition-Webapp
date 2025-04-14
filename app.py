@@ -31,7 +31,7 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ✅ Auto-download model if missing
-GDRIVE_FILE_ID = "1-0Gwiux0iVPBQ34Ku9j2WmOtoz_TICdk"
+GDRIVE_FILE_ID = "16RButtzMCKMJmlCDR8XG42JII1gcj_HP"
 if not MODEL_PATH.exists():
     print("📦 Downloading YOLOv5 model...")
     gdrive_url = f"https://drive.google.com/uc?export=download&id={GDRIVE_FILE_ID}"

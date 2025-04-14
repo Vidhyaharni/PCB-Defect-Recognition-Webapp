@@ -3,7 +3,7 @@ services:
     name: defectoscope
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    startCommand: gunicorn app:app --timeout 120
     envVars:
       - key: PORT
         value: 5000
